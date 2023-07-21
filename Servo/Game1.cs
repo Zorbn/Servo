@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -26,11 +27,21 @@ public class Game1 : Game
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
+        IsFixedTimeStep = false;
+        _graphics.SynchronizeWithVerticalRetrace = false;
     }
 
     protected override void Initialize()
     {
         base.Initialize();
+
+        for (var y = 0; y < 64; y++)
+        {
+            for (var x = 0; x < 64; x++)
+            {
+                _map.SetTile(x, y, Tile.ItemDuct);
+            }
+        }
     }
 
     protected override void LoadContent()
@@ -51,7 +62,7 @@ public class Game1 : Game
         var mouseState = Mouse.GetState();
         var mouseTileX = mouseState.X / TileSize;
         var mouseTileY = mouseState.Y / TileSize;
-        if (_lastMouseState?.LeftButton != ButtonState.Pressed && mouseState.LeftButton == ButtonState.Pressed &&
+        if (/*_lastMouseState?.LeftButton != ButtonState.Pressed &&*/ mouseState.LeftButton == ButtonState.Pressed &&
             (int)_selectedTile >= 0 && (int)_selectedTile < TileData.TileCount)
         {
             _map.SetTile(mouseTileX, mouseTileY, _selectedTile);

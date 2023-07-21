@@ -17,8 +17,10 @@ public class Map
 
         var tileI = x + y * MapSize;
         _tileEntities[tileI]?.OnPreBreak(this);
-        _tiles[tileI] = tile;
+        _tiles[tileI] = Tile.Air;
         _tileEntities[tileI]?.OnBreak(this);
+
+        _tiles[tileI] = tile;
         _tileEntities[tileI] = TileData.Get(tile).TileEntitySpawner?.Invoke();
         _tileEntities[tileI]?.OnPlace(this, x, y);
     }

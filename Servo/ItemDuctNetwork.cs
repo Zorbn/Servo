@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Microsoft.Xna.Framework;
 
 namespace Servo;
@@ -7,6 +8,7 @@ namespace Servo;
 public class ItemDuctNetwork
 {
     public static readonly List<ItemDuctNetwork> Networks = new();
+    private static readonly Stopwatch Stopwatch = new();
 
     public readonly Color Color;
     private readonly List<Point> _nodes = new();
@@ -36,6 +38,8 @@ public class ItemDuctNetwork
 
     public static void Tick(Map map)
     {
+        Stopwatch.Restart();
+
         foreach (var network in Networks)
         {
             foreach (var node in network._nodes)
@@ -52,5 +56,7 @@ public class ItemDuctNetwork
                 }
             }
         }
+
+        Console.WriteLine($"Ticked ({Networks.Count}) networks in: {Stopwatch.Elapsed.TotalMilliseconds}ms");
     }
 }
