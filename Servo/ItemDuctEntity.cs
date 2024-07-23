@@ -19,6 +19,33 @@ public class ItemDuctEntity : ITileEntity
         _x = x;
         _y = y;
 
+        ItemDuctNetwork? neighborNetwork = null;
+        for (var sideI = 0; sideI < 4; sideI++)
+        {
+            ref var direction = ref Direction.Directions[sideI];
+            var sidePosition = new Point(x + direction.X, y + direction.Y);
+
+            if (map.GetTile(sidePosition.X, sidePosition.Y) == Tile.ItemDuct)
+            {
+                var tileEntity = (ItemDuctEntity)map.GetTileEntity(sidePosition.X, sidePosition.Y)!;
+
+                if (tileEntity._network is not null && neighborNetwork is not null && tileEntity._network != neighborNetwork)
+                {
+                    neighborNetwork = null;
+                    break;
+                }
+
+                neighborNetwork = tileEntity._network;
+            }
+        }
+
+        if (neighborNetwork is not null)
+        {
+            _network = neighborNetwork;
+            neighborNetwork.AddNode(new Point(x, y));
+            return;
+        }
+
         for (var sideI = 0; sideI < 4; sideI++)
         {
             ref var direction = ref Direction.Directions[sideI];

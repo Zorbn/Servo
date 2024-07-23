@@ -13,8 +13,9 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch? _spriteBatch;
     private Texture2D? _textureAtlas;
+    private BlendState _multiplyBlendState;
 
-    private Map _map = new();
+    private Map _map;
     private Tile _selectedTile = Tile.Air;
 
     private MouseState? _lastMouseState;
@@ -29,19 +30,20 @@ public class Game1 : Game
         IsMouseVisible = true;
         IsFixedTimeStep = false;
         _graphics.SynchronizeWithVerticalRetrace = false;
+
+        _multiplyBlendState = new BlendState
+        {
+            ColorBlendFunction = BlendFunction.Add,
+            ColorSourceBlend = Blend.DestinationColor,
+            ColorDestinationBlend = Blend.Zero
+        };
     }
 
     protected override void Initialize()
     {
         base.Initialize();
 
-        for (var y = 0; y < 64; y++)
-        {
-            for (var x = 0; x < 64; x++)
-            {
-                _map.SetTile(x, y, Tile.ItemDuct);
-            }
-        }
+        _map = new Map(GraphicsDevice);
     }
 
     protected override void LoadContent()
@@ -62,8 +64,9 @@ public class Game1 : Game
         var mouseState = Mouse.GetState();
         var mouseTileX = mouseState.X / TileSize;
         var mouseTileY = mouseState.Y / TileSize;
-        if (/*_lastMouseState?.LeftButton != ButtonState.Pressed &&*/ mouseState.LeftButton == ButtonState.Pressed &&
-            (int)_selectedTile >= 0 && (int)_selectedTile < TileData.TileCount)
+        if ( /*_lastMouseState?.LeftButton != ButtonState.Pressed &&*/ mouseState.LeftButton == ButtonState.Pressed &&
+                                                                       (int)_selectedTile >= 0 &&
+                                                                       (int)_selectedTile < TileData.TileCount)
         {
             _map.SetTile(mouseTileX, mouseTileY, _selectedTile);
         }
@@ -91,6 +94,8 @@ public class Game1 : Game
             ItemDuctNetwork.Tick(_map);
         }
 
+        _map.UpdateLighting();
+
         base.Update(gameTime);
     }
 
@@ -102,9 +107,9 @@ public class Game1 : Game
 
         _spriteBatch.Begin(samplerState: SamplerState.PointWrap);
 
-        for (var y = 0; y < Map.MapSize; y++)
+        for (var y = 0; y < Map.Size; y++)
         {
-            for (var x = 0; x < Map.MapSize; x++)
+            for (var x = 0; x < Map.Size; x++)
             {
                 var tile = _map.GetTile(x, y);
 
@@ -127,6 +132,15 @@ public class Game1 : Game
 
         _spriteBatch.Draw(_textureAtlas, Vector2.Zero,
             new Rectangle(_selectedTile.GetTextureIndex() * TileSize, 0, TileSize, TileSize), Color.White);
+        _spriteBatch.Draw(_map.LightmapTexture, new Rectangle(0, 16, Map.Size, Map.Size),
+            new Color(1.0f, 1.0f, 1.0f, 1.0f));
+
+        _spriteBatch.End();
+
+        _spriteBatch.Begin(samplerState: SamplerState.PointWrap, blendState: _multiplyBlendState);
+
+        _spriteBatch.Draw(_map.LightmapTexture, new Rectangle(0, 0, Map.Size * TileSize, Map.Size * TileSize), new Rectangle(0, 0, Map.Size, Map.Size),
+            new Color(1.0f, 1.0f, 1.0f, 1.0f), 0f, Vector2.Zero, SpriteEffects.None, 0f);
 
         _spriteBatch.End();
 
