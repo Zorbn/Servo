@@ -8,7 +8,7 @@ namespace Servo;
 
 public class Game1 : Game
 {
-    private const int TileSize = 16;
+    public const int TileSize = 16;
 
     private GraphicsDeviceManager _graphics;
     private SpriteBatch? _spriteBatch;
@@ -22,6 +22,8 @@ public class Game1 : Game
 
     private const float ItemDuctNetworkTickTime = 1f;
     private float _itemDuctNetworkTickTimer = 0f;
+
+    private BasicEffect _lightingEffect;
 
     public Game1()
     {
@@ -44,6 +46,10 @@ public class Game1 : Game
         base.Initialize();
 
         _map = new Map(GraphicsDevice);
+
+        _lightingEffect = new BasicEffect(GraphicsDevice);
+        _lightingEffect.TextureEnabled = false;
+        _lightingEffect.VertexColorEnabled = true;
     }
 
     protected override void LoadContent()
@@ -137,12 +143,34 @@ public class Game1 : Game
 
         _spriteBatch.End();
 
-        _spriteBatch.Begin(samplerState: SamplerState.PointWrap, blendState: _multiplyBlendState);
+        // _spriteBatch.Begin(samplerState: SamplerState.PointWrap, blendState: _multiplyBlendState);
+        //
+        // _spriteBatch.Draw(_map.LightmapTexture, new Rectangle(0, 0, Map.Size * TileSize, Map.Size * TileSize), new Rectangle(0, 0, Map.Size, Map.Size),
+        //     new Color(1.0f, 1.0f, 1.0f, 1.0f), 0f, Vector2.Zero, SpriteEffects.None, 0f);
+        //
+        //
 
-        _spriteBatch.Draw(_map.LightmapTexture, new Rectangle(0, 0, Map.Size * TileSize, Map.Size * TileSize), new Rectangle(0, 0, Map.Size, Map.Size),
-            new Color(1.0f, 1.0f, 1.0f, 1.0f), 0f, Vector2.Zero, SpriteEffects.None, 0f);
+        _map.UpdateLightmapMesh(GraphicsDevice);
 
-        _spriteBatch.End();
+        _lightingEffect.World = Matrix.CreateTranslation(new Vector3(GraphicsDevice.Viewport.Width * -0.5f, GraphicsDevice.Viewport.Height * -0.5f, 0.0f)) *
+                                Matrix.CreateScale(1.0f, -1.0f, 1.0f);
+        _lightingEffect.Projection =
+            Matrix.CreateOrthographic(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, -100.0f, 100.0f);
+        _lightingEffect.View = Matrix.Identity;
+
+        foreach (var pass in _lightingEffect.CurrentTechnique.Passes)
+        {
+            pass.Apply();
+
+            if (_map.LightmapVertexBuffer is not null && _map.LightmapVertexBuffer.VertexCount > 0 &&
+                _map.LightmapIndexBuffer is not null && _map.LightmapIndexBuffer.IndexCount > 0)
+            {
+                GraphicsDevice.SetVertexBuffer(_map.LightmapVertexBuffer);
+                GraphicsDevice.Indices = _map.LightmapIndexBuffer;
+
+                GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, _map.LightmapPrimitiveCount);
+            }
+        }
 
         base.Draw(gameTime);
     }
