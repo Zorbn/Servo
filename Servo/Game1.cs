@@ -8,7 +8,7 @@ namespace Servo;
 
 public class Game1 : Game
 {
-    public const int TileSize = 16;
+    private const int TileSize = 16;
 
     private GraphicsDeviceManager _graphics;
     private SpriteBatch? _spriteBatch;
@@ -23,7 +23,8 @@ public class Game1 : Game
     private const float ItemDuctNetworkTickTime = 1f;
     private float _itemDuctNetworkTickTimer = 0f;
 
-    private BasicEffect _lightingEffect;
+    private Effect _lightEffect;
+    private RenderTarget2D _lightTarget;
 
     public Game1()
     {
@@ -47,14 +48,14 @@ public class Game1 : Game
 
         _map = new Map(GraphicsDevice);
 
-        _lightingEffect = new BasicEffect(GraphicsDevice);
-        _lightingEffect.TextureEnabled = false;
-        _lightingEffect.VertexColorEnabled = true;
+        _lightTarget = new RenderTarget2D(GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, false,
+            GraphicsDevice.PresentationParameters.BackBufferFormat, DepthFormat.Depth24);
     }
 
     protected override void LoadContent()
     {
         _textureAtlas = Content.Load<Texture2D>("atlas");
+        _lightEffect = Content.Load<Effect>("Blur");
 
         _spriteBatch = new SpriteBatch(GraphicsDevice);
     }
@@ -107,8 +108,31 @@ public class Game1 : Game
 
     protected override void Draw(GameTime gameTime)
     {
+        Console.WriteLine($"{1.0 / gameTime.ElapsedGameTime.TotalSeconds}");
+
         Debug.Assert(_spriteBatch is not null && _textureAtlas is not null);
 
+        var view = Matrix.Identity;
+        var width = GraphicsDevice.Viewport.Width;
+        var height = GraphicsDevice.Viewport.Height;
+        var projection = Matrix.CreateOrthographicOffCenter(0, width, height, 0, 0, 1);
+
+        _lightEffect.Parameters["WorldViewProjection"].SetValue(view * projection);
+        _lightEffect.Parameters["Direction"].SetValue(new Vector2(1.0f / width, 0.0f));
+
+        GraphicsDevice.SetRenderTarget(_lightTarget);
+        GraphicsDevice.Clear(Color.Black);
+        _spriteBatch.Begin(samplerState: SamplerState.LinearClamp, effect: _lightEffect);
+
+        _spriteBatch.Draw(_map.LightmapTexture, new Rectangle(0, 0, Map.Size * TileSize, Map.Size * TileSize),
+            new Rectangle(0, 0, Map.Size, Map.Size),
+            new Color(1.0f, 1.0f, 1.0f, 1.0f), 0f, Vector2.Zero, SpriteEffects.None, 0f);
+
+        _spriteBatch.End();
+
+        _lightEffect.Parameters["Direction"].SetValue(new Vector2(0.0f, 1.0f / height));
+
+        GraphicsDevice.SetRenderTarget(null);
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
         _spriteBatch.Begin(samplerState: SamplerState.PointWrap);
@@ -143,34 +167,13 @@ public class Game1 : Game
 
         _spriteBatch.End();
 
-        // _spriteBatch.Begin(samplerState: SamplerState.PointWrap, blendState: _multiplyBlendState);
-        //
-        // _spriteBatch.Draw(_map.LightmapTexture, new Rectangle(0, 0, Map.Size * TileSize, Map.Size * TileSize), new Rectangle(0, 0, Map.Size, Map.Size),
-        //     new Color(1.0f, 1.0f, 1.0f, 1.0f), 0f, Vector2.Zero, SpriteEffects.None, 0f);
-        //
-        //
+        // GraphicsDevice.SetRenderTarget(null);
+        _spriteBatch.Begin(samplerState: SamplerState.LinearClamp, blendState: _multiplyBlendState, effect: _lightEffect);
 
-        _map.UpdateLightmapMesh(GraphicsDevice);
+        _spriteBatch.Draw(_lightTarget, new Rectangle(0, 0, width, height), new Rectangle(0, 0, width, height),
+            new Color(1.0f, 1.0f, 1.0f, 1.0f), 0f, Vector2.Zero, SpriteEffects.None, 0f);
 
-        _lightingEffect.World = Matrix.CreateTranslation(new Vector3(GraphicsDevice.Viewport.Width * -0.5f, GraphicsDevice.Viewport.Height * -0.5f, 0.0f)) *
-                                Matrix.CreateScale(1.0f, -1.0f, 1.0f);
-        _lightingEffect.Projection =
-            Matrix.CreateOrthographic(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, -100.0f, 100.0f);
-        _lightingEffect.View = Matrix.Identity;
-
-        foreach (var pass in _lightingEffect.CurrentTechnique.Passes)
-        {
-            pass.Apply();
-
-            if (_map.LightmapVertexBuffer is not null && _map.LightmapVertexBuffer.VertexCount > 0 &&
-                _map.LightmapIndexBuffer is not null && _map.LightmapIndexBuffer.IndexCount > 0)
-            {
-                GraphicsDevice.SetVertexBuffer(_map.LightmapVertexBuffer);
-                GraphicsDevice.Indices = _map.LightmapIndexBuffer;
-
-                GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, _map.LightmapPrimitiveCount);
-            }
-        }
+        _spriteBatch.End();
 
         base.Draw(gameTime);
     }

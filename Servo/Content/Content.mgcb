@@ -25,3 +25,9 @@
 /processorParam:TextureFormat=Color
 /build:atlas.png
 
+#begin Blur.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Blur.fx
+
