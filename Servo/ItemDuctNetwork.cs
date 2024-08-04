@@ -36,7 +36,7 @@ public class ItemDuctNetwork
         _nodes.Add(node);
     }
 
-    public static void Tick(Map map)
+    public static void Tick(Map map, Map otherMap)
     {
         Stopwatch.Restart();
 
@@ -51,7 +51,7 @@ public class ItemDuctNetwork
 
                     if (map.GetTile(sidePosition.X, sidePosition.Y) == Tile.Dirt)
                     {
-                        map.SetTile(sidePosition.X, sidePosition.Y, Tile.Grass);
+                        map.SetTile(sidePosition.X, sidePosition.Y, Tile.Grass, otherMap);
                     }
                 }
             }

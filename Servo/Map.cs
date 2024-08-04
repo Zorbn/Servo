@@ -29,10 +29,10 @@ public class Map
         LightmapTexture = new Texture2D(graphicsDevice, Size, Size);
         Array.Fill(_lightmapPixels, new Color(1.0f, 1.0f, 1.0f, 1.0f));
         LightmapTexture.SetData(_lightmapPixels);
-        Array.Fill(_lightmap, (byte)0xff);
+        Array.Fill(_lightmap, (byte)0xf0);
     }
 
-    public void SetTile(int x, int y, Tile tile)
+    public void SetTile(int x, int y, Tile tile, Map otherMap)
     {
         if (x < 0 || x >= Size || y < 0 || y >= Size)
         {
@@ -48,11 +48,14 @@ public class Map
         _tileEntities[tileI] = TileData.Get(tile).TileEntitySpawner?.Invoke();
         _tileEntities[tileI]?.OnPlace(this, x, y);
 
-        _lightingUpdates.Push(new LightingUpdate
+        var lightingUpdate = new LightingUpdate
         {
             X = x,
             Y = y
-        });
+        };
+
+        _lightingUpdates.Push(lightingUpdate);
+        otherMap._lightingUpdates.Push(lightingUpdate);
     }
 
     public Tile GetTile(int x, int y)
@@ -96,28 +99,31 @@ public class Map
         return (byte)((_lightmap[x + y * Size] & mask) >> offset);
     }
 
-    public void UpdateLighting()
+    public void UpdateFrontLighting(Map backMap)
     {
         while (_lightingUpdates.TryPop(out var current))
         {
             var tile = GetTile(current.X, current.Y);
+            var backTile = backMap.GetTile(current.X, current.Y);
 
             var oldSunlight = GetLight(current.X, current.Y, SunlightMask, SunlightOffset);
             var oldLight = GetLight(current.X, current.Y, LightMask, LightOffset);
             byte newSunlight = 0;
             byte newLight = 0;
 
-            if (tile == Tile.Air)
+            var isAir = tile == Tile.Air && backTile == Tile.Air;
+
+            if (isAir)
             {
                 newSunlight = MaxLightLevel;
             }
 
-            if (tile == Tile.Dropper)
+            if (tile == Tile.Dropper || backTile == Tile.Dropper)
             {
                 newLight = MaxLightLevel;
             }
 
-            var opacity = tile == Tile.Air ? 1 : 3;
+            var opacity = isAir ? 1 : 3;
 
             for (var sideI = 0; sideI < 4; sideI++)
             {
@@ -135,6 +141,7 @@ public class Map
             }
 
             var isLightDifferent = oldLight != newLight || oldSunlight != newSunlight;
+
             if (isLightDifferent)
             {
                 SetLight(current.X, current.Y, newSunlight, SunlightMask, SunlightOffset);
@@ -158,6 +165,22 @@ public class Map
                     }
                 }
             }
+        }
+
+        LightmapTexture.SetData(_lightmapPixels);
+    }
+
+    public void UpdateBackLighting(Map frontMap)
+    {
+        while (_lightingUpdates.TryPop(out var current))
+        {
+            var frontTile = frontMap.GetTile(current.X, current.Y);
+            var newSunlight = frontTile == Tile.Air ? MaxLightLevel : (byte)0;
+
+            SetLight(current.X, current.Y, newSunlight, SunlightMask, SunlightOffset);
+
+            var lightLevel = Math.Min(newSunlight / (float)MaxVisibleLightLevel, 1.0f);
+            _lightmapPixels[current.X + current.Y * Size] = new Color(lightLevel, lightLevel, lightLevel, 1.0f);
         }
 
         LightmapTexture.SetData(_lightmapPixels);
