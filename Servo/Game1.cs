@@ -184,13 +184,15 @@ public class Game1 : Game
                     continue;
                 }
 
+                var tileColor = color;
+
                 if (tile == Tile.ItemDuct)
                 {
-                    color = ((ItemDuctEntity)map.GetTileEntity(x, y)!).Color;
+                    tileColor = ((ItemDuctEntity)map.GetTileEntity(x, y)!).Color;
                 }
 
                 _spriteBatch.Draw(_textureAtlas, new Vector2(x * TileSize, y * TileSize),
-                    new Rectangle(tile.GetTextureIndex() * TileSize, 0, TileSize, TileSize), color);
+                    new Rectangle(tile.GetTextureIndex() * TileSize, 0, TileSize, TileSize), tileColor);
             }
         }
 
@@ -217,8 +219,8 @@ public class Game1 : Game
 
         DrawMap(_backMap, Color.LightGray, _maskStencilState);
         DrawLightTargetToScreen(_backLightTarget, width, height, _maskedStencilState);
-        DrawMap(_map, Color.White);
-        DrawLightTargetToScreen(_lightTarget, width, height);
+        DrawMap(_map, Color.White, _maskStencilState);
+        DrawLightTargetToScreen(_lightTarget, width, height, _maskedStencilState);
 
         _spriteBatch.Begin(samplerState: SamplerState.PointWrap);
 
